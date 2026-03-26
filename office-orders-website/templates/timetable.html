@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Timetable</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+
+<body>
+
+<h2>Timetable</h2>
+
+<div class="controls">
+    <input
+        type="text"
+        id="searchBox"
+        placeholder="Search timetable..."
+        onkeyup="applyFilter()"
+    >
+</div>
+
+<table>
+    <thead>
+        <tr>
+            <th>Subject</th>
+            <th>Date</th>
+            <th>Download</th>
+        </tr>
+    </thead>
+
+    <tbody id="timetable-body">
+        {% for t in timetable %}
+        <tr>
+            <td>{{ t.subject }}</td>
+            <td>{{ t.date }}</td>
+            <td>
+                <a href="{{ t.file }}" target="_blank">PDF</a>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<script>
+    let allTimetables = [];
+
+    function fetchTimetables() {
+        fetch("/api/timetable")
+            .then(res => res.json())
+            .then(data => {
+                allTimetables = data;
+                renderTable();
+            })
+            .catch(err => console.error("Failed to fetch timetable", err));
+    }
+
+    function applyFilter() {
+        renderTable();
+    }
+
+    function renderTable() {
+        const tbody = document.getElementById("timetable-body");
+        tbody.innerHTML = "";
+
+        const searchText = document.getElementById("searchBox").value.toLowerCase();
+
+        allTimetables.forEach(t => {
+            const subjectMatch = (t.subject || "").toLowerCase().includes(searchText);
+
+            if (!subjectMatch) return;
+
+            const row = `
+                <tr>
+                    <td>${t.subject || ""}</td>
+                    <td>${t.date || ""}</td>
+                    <td>
+                        <a href="${t.file}" target="_blank">PDF</a>
+                    </td>
+                </tr>
+            `;
+
+            tbody.insertAdjacentHTML("beforeend", row);
+        });
+    }
+
+    // Initial load + auto refresh
+    fetchTimetables();
+    setInterval(fetchTimetables, 5000);
+</script>
+
+</body>
+</html>

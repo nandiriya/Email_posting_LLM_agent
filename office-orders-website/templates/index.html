@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Office Orders</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+
+<body>
+
+<h2>Office Orders</h2>
+
+<!-- 🔍 Controls -->
+<div class="controls">
+    <input
+        type="text"
+        id="searchBox"
+        placeholder="Search by subject..."
+        onkeyup="applyFilters()"
+    >
+
+    <select id="categoryFilter" onchange="applyFilters()">
+        <option value="all">All Categories</option>
+        <option value="HR">HR</option>
+        <option value="Academic">Academic</option>
+        <option value="Institute">Institute</option>
+        <option value="Faculty Matters">Faculty Matters</option>
+        <option value="Finance">Finance</option>
+    </select>
+</div>
+
+<!-- 📋 Office Orders Table -->
+<table>
+    <thead>
+        <tr>
+            <th>Subject</th>
+            <th>Category</th>
+            <th>Sub Category</th>
+            <th>Release Date</th>
+            <th>Download</th>
+            <th>Action</th> <!-- ✅ NEW -->
+        </tr>
+    </thead>
+
+    <tbody id="orders-body">
+        {% for o in orders %}
+        <tr id="order-{{ o.id }}">
+            <td>
+                {{ o.subject }}
+                {% if o.is_new %}
+                    <span class="new-badge">NEW</span>
+                {% endif %}
+            </td>
+            <td>{{ o.category }}</td>
+            <td>{{ o.subcategory }}</td>
+            <td>{{ o.release_date }}</td>
+            <td>
+                <a href="{{ o.pdf_path }}" target="_blank">PDF</a>
+            </td>
+            <td>
+                <button onclick="deleteOfficeOrder({{ o.id }})">❌</button>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<script>
+    let allOrders = [];
+
+    function fetchOrders() {
+        fetch("/api/office-orders")
+            .then(res => res.json())
+            .then(data => {
+                allOrders = data;
+                renderTable();
+            })
+            .catch(err => console.error("Failed to fetch office orders", err));
+    }
+
+    function applyFilters() {
+        renderTable();
+    }
+
+    function deleteOfficeOrder(id) {
+        if (!confirm("Delete this office order?")) return;
+
+        fetch(`/api/office-orders/${id}`, {
+            method: "DELETE"
+        })
+        .then(res => res.json())
+        .then(() => {
+            // Remove instantly from UI
+            document.getElementById(`order-${id}`)?.remove();
+
+            // Also remove from JS array
+            allOrders = allOrders.filter(o => o.id !== id);
+        })
+        .catch(err => console.error("Delete failed:", err));
+    }
+
+    function renderTable() {
+        const tbody = document.getElementById("orders-body");
+        tbody.innerHTML = "";
+
+        const searchText = document.getElementById("searchBox").value.toLowerCase();
+        const selectedCategory = document.getElementById("categoryFilter").value;
+
+        allOrders.forEach(o => {
+            const subjectMatch = (o.subject || "").toLowerCase().includes(searchText);
+            const categoryMatch =
+                selectedCategory === "all" || o.category === selectedCategory;
+
+            if (!subjectMatch || !categoryMatch) return;
+
+            const row = `
+                <tr id="order-${o.id}">
+                    <td>
+                        ${o.subject || ""}
+                        ${o.is_new ? '<span class="new-badge">NEW</span>' : ''}
+                    </td>
+                    <td>${o.category || ""}</td>
+                    <td>${o.subcategory || ""}</td>
+                    <td>${o.release_date || ""}</td>
+                    <td>
+                        <a href="${o.pdf_path}" target="_blank">PDF</a>
+                    </td>
+                    <td>
+                        <button onclick="deleteOfficeOrder(${o.id})">❌</button>
+                    </td>
+                </tr>
+            `;
+
+            tbody.insertAdjacentHTML("beforeend", row);
+        });
+    }
+
+    fetchOrders();
+    setInterval(fetchOrders, 5000);
+</script>
+
+</body>
+</html>

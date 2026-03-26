@@ -1,0 +1,45 @@
+body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+
+        h2 {
+            margin-bottom: 10px;
+        }
+
+        .controls {
+            margin-bottom: 15px;
+            display: flex;
+            gap: 10px;
+        }
+
+        input, select {
+            padding: 6px;
+            font-size: 14px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            background: #2c3e50;
+            color: white;
+            padding: 8px;
+        }
+
+        td {
+            padding: 8px;
+            border-bottom: 1px solid #ccc;
+        }
+
+        tr:hover {
+            background-color: #f2f2f2;
+        }
+
+        .new-badge {
+            color: green;
+            font-weight: bold;
+            margin-left: 6px;
+        }

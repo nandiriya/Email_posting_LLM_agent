@@ -1,0 +1,6 @@
+openai
+pandas
+scikit-learn
+tqdm
+python-dotenv
+numpy
