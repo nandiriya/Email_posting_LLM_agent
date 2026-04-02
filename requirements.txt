@@ -1,6 +1,13 @@
+Flask
 openai
 pandas
 scikit-learn
 tqdm
 python-dotenv
 numpy
+sentence-transformers
+faiss-cpu
+pdfplumber
+PyMuPDF
+pdf2image
+pytesseract

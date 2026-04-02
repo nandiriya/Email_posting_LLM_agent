@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Office Order Chatbot</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body class="chat-page">
+
+<div class="chat-shell">
+    <div class="chat-header">
+        <div>
+            <h2>Office Order Chatbot</h2>
+            <p>Ask questions across the indexed PDF corpus.</p>
+        </div>
+        <div class="chat-actions">
+            <button id="rebuildBtn" onclick="rebuildIndex()">Rebuild Index</button>
+            <a class="secondary-link" href="/office-orders">View Orders</a>
+        </div>
+    </div>
+
+    <div id="statusBanner" class="status-banner">Checking index status...</div>
+
+    <div id="messages" class="messages">
+        <div class="message assistant">
+            Ask about policies, appointments, committees, travel rules, or any office order stored in the PDF library.
+        </div>
+    </div>
+
+    <form class="chat-form" onsubmit="askQuestion(event)">
+        <textarea id="questionInput" placeholder="Example: What is the revised tuition fee policy for AY 2024-25?" required></textarea>
+        <button type="submit" id="askBtn">Ask</button>
+    </form>
+</div>
+
+<script>
+    async function fetchStatus() {
+        const statusBanner = document.getElementById("statusBanner");
+        try {
+            const res = await fetch("/api/rag/status");
+            const data = await res.json();
+            if (data.status === "ready") {
+                statusBanner.textContent = `Index ready: ${data.pdf_count} PDFs, ${data.chunk_count} chunks`;
+                statusBanner.className = "status-banner ready";
+            } else {
+                statusBanner.textContent = data.message || "Index status unavailable";
+                statusBanner.className = "status-banner error";
+            }
+        } catch (err) {
+            statusBanner.textContent = "Failed to load index status";
+            statusBanner.className = "status-banner error";
+        }
+    }
+
+    function appendMessage(content, role) {
+        const wrapper = document.getElementById("messages");
+        const node = document.createElement("div");
+        node.className = `message ${role}`;
+        node.innerHTML = content;
+        wrapper.appendChild(node);
+        wrapper.scrollTop = wrapper.scrollHeight;
+    }
+
+    function renderSources(sources) {
+        if (!sources || !sources.length) {
+            return "";
+        }
+
+        return `
+            <div class="sources">
+                ${sources.map((source, index) => `
+                    <div class="source-card">
+                        <strong>Source ${index + 1}</strong>
+                        <div>${source.file_name} | page ${source.page}</div>
+                        <div class="snippet">${source.snippet || ""}</div>
+                        <a href="${source.pdf_path}" target="_blank">Open PDF</a>
+                    </div>
+                `).join("")}
+            </div>
+        `;
+    }
+
+    async function askQuestion(event) {
+        event.preventDefault();
+        const input = document.getElementById("questionInput");
+        const askBtn = document.getElementById("askBtn");
+        const question = input.value.trim();
+
+        if (!question) return;
+
+        appendMessage(question, "user");
+        input.value = "";
+        askBtn.disabled = true;
+
+        try {
+            const res = await fetch("/api/rag/ask", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ question, top_k: 5 })
+            });
+
+            const data = await res.json();
+            if (data.status !== "success") {
+                appendMessage(data.message || "Unable to answer that question right now.", "assistant");
+                return;
+            }
+
+            const answerHtml = `
+                <div>${(data.answer || "").replace(/\n/g, "<br>")}</div>
+                ${renderSources(data.sources)}
+            `;
+            appendMessage(answerHtml, "assistant");
+        } catch (err) {
+            appendMessage("Something went wrong while querying the office-order corpus.", "assistant");
+        } finally {
+            askBtn.disabled = false;
+        }
+    }
+
+    async function rebuildIndex() {
+        const statusBanner = document.getElementById("statusBanner");
+        const button = document.getElementById("rebuildBtn");
+        button.disabled = true;
+        statusBanner.textContent = "Rebuilding index...";
+        statusBanner.className = "status-banner";
+
+        try {
+            const res = await fetch("/api/rag/rebuild", { method: "POST" });
+            const data = await res.json();
+            if (data.status === "ready") {
+                statusBanner.textContent = `Rebuilt index: ${data.pdf_count} PDFs, ${data.chunk_count} chunks`;
+                statusBanner.className = "status-banner ready";
+            } else {
+                statusBanner.textContent = data.message || "Rebuild failed";
+                statusBanner.className = "status-banner error";
+            }
+        } catch (err) {
+            statusBanner.textContent = "Rebuild failed";
+            statusBanner.className = "status-banner error";
+        } finally {
+            button.disabled = false;
+        }
+    }
+
+    fetchStatus();
+</script>
+</body>
+</html>

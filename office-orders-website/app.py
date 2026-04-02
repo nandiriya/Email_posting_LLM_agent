@@ -3,10 +3,14 @@ import json
 import os
 from datetime import datetime
 
+from rag_service import OfficeOrdersRAG
+
 app = Flask(__name__)
 
-DATA_FILE = "data.json"
-TIMETABLE_FILE = "timetable.json"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DATA_FILE = os.path.join(BASE_DIR, "data.json")
+TIMETABLE_FILE = os.path.join(BASE_DIR, "timetable.json")
+rag_service = OfficeOrdersRAG()
 
 
 def load_orders():
@@ -60,6 +64,11 @@ def office_orders():
 def timetable():
     data = load_timetable()
     return render_template("timetable.html", timetable=data)
+
+
+@app.route("/office-orders/chat")
+def office_orders_chat():
+    return render_template("chat.html")
 
 
 # CREATE
@@ -181,6 +190,41 @@ def delete_timetable(item_id):
     save_timetable(updated)
 
     return jsonify({"status": "success"})
+
+
+@app.route("/api/rag/status", methods=["GET"])
+def rag_status():
+    try:
+        status = rag_service.ensure_index()
+        return jsonify(status)
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@app.route("/api/rag/rebuild", methods=["POST"])
+def rag_rebuild():
+    try:
+        status = rag_service.ensure_index(force_rebuild=True)
+        return jsonify(status)
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@app.route("/api/rag/ask", methods=["POST"])
+def rag_ask():
+    try:
+        data = request.get_json() or {}
+        question = (data.get("question") or "").strip()
+        top_k = int(data.get("top_k", 5))
+
+        if not question:
+            return jsonify({"status": "error", "message": "Question is required"}), 400
+
+        result = rag_service.answer_query(question, top_k=top_k)
+        result["status"] = "success"
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 
 def start_flask():
