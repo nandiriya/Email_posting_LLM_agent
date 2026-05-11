@@ -3,14 +3,10 @@ import json
 import os
 from datetime import datetime
 
-from rag_service import OfficeOrdersRAG
-
 app = Flask(__name__)
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DATA_FILE = os.path.join(BASE_DIR, "data.json")
-TIMETABLE_FILE = os.path.join(BASE_DIR, "timetable.json")
-rag_service = OfficeOrdersRAG()
+DATA_FILE = "data/data.json"
+TIMETABLE_FILE = "data/timetable.json"
 
 
 def load_orders():
@@ -64,11 +60,6 @@ def office_orders():
 def timetable():
     data = load_timetable()
     return render_template("timetable.html", timetable=data)
-
-
-@app.route("/office-orders/chat")
-def office_orders_chat():
-    return render_template("chat.html")
 
 
 # CREATE
@@ -157,11 +148,25 @@ def add_timetable():
 
         timetable = load_timetable()
 
+        group_key = data.get("group_key", "")
+        
+        # Archive older versions of the same timetable
+        if group_key:
+            for t in timetable:
+                if t.get("group_key") == group_key and not t.get("archived", False):
+                    t["archived"] = True
+
         new_entry = {
             "id": generate_id(),
             "subject": data.get("subject", "Timetable"),
+            "semester": data.get("semester", ""),
+            "academic_year": data.get("academic_year", ""),
+            "group_key": group_key,
+            "version": data.get("version", 1),
+            "version_hint": data.get("version_hint", "new"),
             "date": data.get("date", ""),
-            "file": data.get("file", "")
+            "file": data.get("file", ""),
+            "archived": False
         }
 
         timetable.append(new_entry)
@@ -170,7 +175,7 @@ def add_timetable():
         return jsonify({"status": "success"}), 201
 
     except Exception as e:
-        print("🔥 ERROR in /api/timetable:", str(e))
+        print("ERROR in /api/timetable:", str(e))
         return jsonify({"error": str(e)}), 500
 
 # GET timetable (for UI)
@@ -192,44 +197,9 @@ def delete_timetable(item_id):
     return jsonify({"status": "success"})
 
 
-@app.route("/api/rag/status", methods=["GET"])
-def rag_status():
-    try:
-        status = rag_service.ensure_index()
-        return jsonify(status)
-    except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
-
-
-@app.route("/api/rag/rebuild", methods=["POST"])
-def rag_rebuild():
-    try:
-        status = rag_service.ensure_index(force_rebuild=True)
-        return jsonify(status)
-    except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
-
-
-@app.route("/api/rag/ask", methods=["POST"])
-def rag_ask():
-    try:
-        data = request.get_json() or {}
-        question = (data.get("question") or "").strip()
-        top_k = int(data.get("top_k", 5))
-
-        if not question:
-            return jsonify({"status": "error", "message": "Question is required"}), 400
-
-        result = rag_service.answer_query(question, top_k=top_k)
-        result["status"] = "success"
-        return jsonify(result)
-    except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
-
-
 def start_flask():
     app.run(port=5000, debug=False, use_reloader=False)
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=False)

@@ -22,7 +22,7 @@ def log(message: str):
         print(f"[PIPELINE] {message}")
 
 
-# API CALLS 
+# API CALLS #
 
 def create_office_order(payload: dict):
     url = WEBSITE_BASE_URL + CREATE_ORDER_ENDPOINT
@@ -38,7 +38,16 @@ def create_timetable(payload: dict):
     return response.json()
 
 
-# ---------------- MAIN PIPELINE ----------------
+def get_timetables_by_subject(subject: str):
+    try:
+        url = WEBSITE_BASE_URL + f"/api/timetable?subject={subject}"
+        response = requests.get(url)
+        return response.json()
+    except:
+        return []
+
+
+# MAIN PIPELINE #
 
 def run_pipeline():
     log("Pipeline started")
@@ -65,35 +74,58 @@ def run_pipeline():
 
         log(f"Processing PDF: {pdf_path}")
 
-        # Convert to web path
+        #  PATH FIX 
         filename = os.path.basename(pdf_path)
         web_pdf_path = f"/static/pdfs/{filename}"
 
-        # PDF TEXT
+        # PDF TEXT EXTRACTION
         raw_pdf_text = extract_pdf(pdf_path)
-        cleaned_pdf_text = raw_pdf_text.get("text", "")
-        # RAG BUILD
+
+        if isinstance(raw_pdf_text, dict):
+            cleaned_pdf_text = raw_pdf_text.get("text", "")
+        else:
+            cleaned_pdf_text = str(raw_pdf_text)
+
+        cleaned_pdf_text = cleaned_pdf_text.strip()
+
+        log(f"Extracted text length: {len(cleaned_pdf_text)}")
+
+        if not cleaned_pdf_text:
+            log("Empty PDF text, skipping")
+            continue
+
+        # RAG 
         rag = SimpleRAG()
         rag.build_index(cleaned_pdf_text)
 
-        # FIRST PASS (TYPE DETECTION) 
-        context = rag.retrieve("Identify whether this is a timetable or an office order")
-        doc_data = analyze_document(context)
+        # STEP 1: TYPE DETECTION 
+        type_context = rag.retrieve(
+            "Identify whether this is a timetable or an office order"
+        )
+
+        doc_data = analyze_document(type_context)
 
         email_type = doc_data.get("document_type", "unknown")
 
         if email_type == "unknown":
+            log("LLM failed → fallback to email classifier")
             email_type = classify_email(email)
-            log("Fallback to email classification")
 
-        log(f"Final detected type: {email_type}")
+        if not email_type or email_type == "unknown":
+            log("Still unknown → forcing timetable")
+            email_type = "timetable"
 
-        # OFFICE ORDER
+        log(f"Detected type: {email_type}")
+
+        # OFFICE ORDER FLOW
+        
         if email_type == "office_order":
 
             log("Processing office order")
 
-            context = rag.retrieve("Extract subject, category, subcategory, and release date")
+            context = rag.retrieve(
+                "Extract subject, category, subcategory, and release date from this office order"
+            )
 
             doc_data = analyze_document(context)
 
@@ -116,41 +148,68 @@ def run_pipeline():
             log(f"Office order payload: {payload}")
 
             try:
-                response = create_office_order(payload)
-                log(f"Office order created ID: {response.get('id')}")
+                res = create_office_order(payload)
+                log(f"Office order created ID: {res.get('id')}")
             except Exception as e:
                 log(f"Office order API failed: {e}")
                 continue
 
-        # TIMETABLE 
+        # TIMETABLE FLOW
+        
         elif email_type == "timetable":
 
             log("Processing timetable")
 
             context = rag.retrieve(
-                "Find the main title of the timetable, semester, academic year, and official heading"
-)
-            
+                "Extract timetable title, semester (Winter/Monsoon/Summer), academic year, version type (new/revised), and release date"
+            )
 
             doc_data = analyze_document(context)
 
+            #EXTRACT 
+            semester = doc_data.get("semester", "")
+            academic_year = doc_data.get("academic_year", "")
             subject = doc_data.get("subject", "").strip()
+            version_hint = doc_data.get("version_hint", "new")
+            release_date = doc_data.get("release_date", "")
 
-            # fallback
-            if not subject:
-                subject = "Timetable"
+            # SMART SUBJECT 
+            if not subject or subject.lower() in ["timetable", "course timetable"]:
+                if semester and academic_year:
+                    subject = f"{semester} Semester {academic_year} Timetable"
+                else:
+                    subject = "Timetable"
 
-            # normalize (IMPORTANT for versioning)
-            subject = subject.replace("Course Schedule", "Course Timetable").strip()
+            # FALLBACKS 
+            if not release_date:
+                release_date = datetime.now().strftime("%Y-%m-%d")
 
-            formatted_date = doc_data.get("release_date")
+            if not semester:
+                semester = "Unknown"
 
-            if not formatted_date:
-                formatted_date = datetime.now().strftime("%Y-%m-%d")
+            if not academic_year:
+                academic_year = "unknown"
 
+            # GROUP KEY 
+            group_key = f"{semester}_{academic_year}".lower().replace(" ", "")
+
+            # VERSION LOGIC 
+            existing = get_timetables_by_subject(subject)
+
+            if existing:
+                version = max(item.get("version", 1) for item in existing) + 1
+            else:
+                version = 1
+
+            # FINAL PAYLOAD
             payload = {
                 "subject": subject,
-                "date": formatted_date,
+                "semester": semester,
+                "academic_year": academic_year,
+                "group_key": group_key,
+                "version": version,
+                "version_hint": version_hint,
+                "date": release_date,
                 "file": web_pdf_path
             }
 
@@ -158,16 +217,19 @@ def run_pipeline():
 
             try:
                 res = create_timetable(payload)
-                log(f"Timetable added successfully (v{res.get('version')})")
+                log(f"Timetable processed (v{res.get('version', version)})")
             except Exception as e:
                 log(f"Timetable API failed: {e}")
                 continue
 
+        # UNKNOWN
         else:
-            log("Unknown document type → skipped")
+            log("Unknown document type: skipped")
 
     log("Pipeline completed successfully")
 
+
+# RUN #
 
 if __name__ == "__main__":
     run_pipeline()

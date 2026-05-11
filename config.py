@@ -35,7 +35,6 @@ IMAP_SERVER = os.getenv(
 IMAP_PORT = int(os.getenv("IMAP_PORT", 993))
 
 
-
 # FILE & STORAGE PATHS
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -68,4 +67,4 @@ DELETE_ORDER_ENDPOINT = "/api/office-orders/delete"
 
 # DEBUG / LOGGING
 
-DEBUG_MODE = os.getenv("DEBUG_MODE", "true").lower() == "true"
+DEBUG_MODE = os.getenv("DEBUG_MODE", "true").lower() == "true"  

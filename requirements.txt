@@ -1,13 +1,33 @@
-Flask
-openai
+# Web Framework 
+flask
+gunicorn                  # WSGI server to run Flask in production
+
+# LLM / AI 
+openai                    # Used to call NVIDIA's API (OpenAI-compatible)
+
+# RAG (Retrieval-Augmented Generation) 
+sentence-transformers     # Embedding model (all-MiniLM-L6-v2)
+faiss-cpu                 # Vector similarity search
+numpy                     # Required by faiss + sentence-transformers
+
+# PDF Processing 
+pdfplumber                # Extract text from digital PDFs
+PyMuPDF                   # fitz — fast PDF text extraction
+pdf2image                 # Convert scanned PDF pages to images
+Pillow                    # Image handling (required by pdf2image)
+pytesseract               # OCR for scanned PDF images
+
+# HTTP / Networking 
+requests                  # Pipeline calls the Flask API internally
+
+# Utilities 
+python-dotenv             # Load .env file for API keys / config
+
+# Data / ML (used in classifier / analysis) 
 pandas
 scikit-learn
 tqdm
-python-dotenv
-numpy
-sentence-transformers
-faiss-cpu
-pdfplumber
-PyMuPDF
-pdf2image
-pytesseract
+
+#pytesseract needs Tesseract OCR installed at the OS level(not via pip)
+#sudo apt install tesseract-ocr -y          # Ubuntu/Debian
+#sudo apt install poppler-utils -y          # Required by pdf2image

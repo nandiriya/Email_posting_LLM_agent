@@ -1,143 +1,240 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
-    <title>Office Orders</title>
-    <link rel="stylesheet" href="/static/css/style.css">
+    <title>Office Orders Portal</title>
+
+    <!-- Bootstrap -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css">
+
+    <!-- DataTables -->
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap4.min.css">
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+    <!-- CLEAN STYLE -->
+    <style>
+        body {
+            background: #f4f6f9;
+            font-family: 'Segoe UI', sans-serif;
+            color: #333333;
+            min-height: 100vh;
+            position: relative;
+            background-color: transparent;
+        }
+
+        body::before {
+            content: "";
+            position: fixed;
+            top: -5%;
+            left: -5%;
+            width: 110%;
+            height: 110%;
+            background-image: url("{{ url_for('static', filename='images/institute18.jpg') }}");
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            filter: blur(4px);
+            z-index: -2;
+        }
+
+        body::after {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.4) 0%, rgba(224, 242, 254, 0.5) 100%);
+            z-index: -1;
+        }
+
+        /* Header */
+        .header {
+            background: #1f2d3d;
+            color: white;
+            padding: 15px 25px;
+            font-size: 20px;
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .header span {
+            color: #17a2b8;
+        }
+
+        .container {
+            margin-top: 25px;
+        }
+
+        h2 {
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: #1f2d3d;
+        }
+
+        .card-box {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+        }
+
+        table {
+            background: white;
+        }
+
+        thead {
+            background: #1f2d3d;
+            color: white;
+        }
+
+        tbody tr:hover {
+            background-color: #f1f5f9;
+        }
+
+        .btn-delete {
+            color: #dc3545;
+            border: none;
+            background: none;
+            cursor: pointer;
+        }
+
+        .btn-delete:hover {
+            color: #a71d2a;
+        }
+
+        /* Fix DataTables layout */
+        .dataTables_wrapper .row {
+            align-items: center;
+        }
+
+        .dataTables_filter {
+            text-align: right !important;
+        }
+
+        .dataTables_length {
+            text-align: left !important;
+        }
+    </style>
 </head>
 
 <body>
 
-<h2>Office Orders</h2>
+    <!-- HEADER -->
+    <div class="header">
+        <div>🏫 <span>IIIT Delhi</span> Office Orders Portal</div>
+        <div id="admin-label" style="display: none;">Admin Panel</div>
+    </div>
 
-<!-- 🔍 Controls -->
-<div class="controls">
-    <input
-        type="text"
-        id="searchBox"
-        placeholder="Search by subject..."
-        onkeyup="applyFilters()"
-    >
+    <!-- CONTENT -->
+    <div class="container">
+        <div class="card-box">
 
-    <select id="categoryFilter" onchange="applyFilters()">
-        <option value="all">All Categories</option>
-        <option value="HR">HR</option>
-        <option value="Academic">Academic</option>
-        <option value="Institute">Institute</option>
-        <option value="Faculty Matters">Faculty Matters</option>
-        <option value="Finance">Finance</option>
-    </select>
-</div>
+            <h2>📄 Office Orders</h2>
 
-<!-- 📋 Office Orders Table -->
-<table>
-    <thead>
-        <tr>
-            <th>Subject</th>
-            <th>Category</th>
-            <th>Sub Category</th>
-            <th>Release Date</th>
-            <th>Download</th>
-            <th>Action</th> <!-- ✅ NEW -->
-        </tr>
-    </thead>
+            <table id="ordersTable" class="table table-bordered table-striped">
+                <thead>
+                    <tr id="table-header-row">
+                        <th>Subject</th>
+                        <th>Category</th>
+                        <th>Sub Category</th>
+                        <th>Release Date</th>
+                        <th>Download</th>
+                    </tr>
+                </thead>
 
-    <tbody id="orders-body">
-        {% for o in orders %}
-        <tr id="order-{{ o.id }}">
-            <td>
-                {{ o.subject }}
-                {% if o.is_new %}
-                    <span class="new-badge">NEW</span>
-                {% endif %}
-            </td>
-            <td>{{ o.category }}</td>
-            <td>{{ o.subcategory }}</td>
-            <td>{{ o.release_date }}</td>
-            <td>
-                <a href="{{ o.pdf_path }}" target="_blank">PDF</a>
-            </td>
-            <td>
-                <button onclick="deleteOfficeOrder({{ o.id }})">❌</button>
-            </td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
+                <tbody></tbody>
+            </table>
 
-<script>
-    let allOrders = [];
+        </div>
+    </div>
 
-    function fetchOrders() {
-        fetch("/api/office-orders")
-            .then(res => res.json())
-            .then(data => {
-                allOrders = data;
-                renderTable();
+    <!-- JS -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap4.min.js"></script>
+
+    <script>
+        let table;
+        const isAdmin = new URLSearchParams(window.location.search).get('admin') === 'true'; /* for Admin View (With delete button): http://127.0.0.1:5000/office-orders?admin=true */
+
+        if (isAdmin) {
+            document.getElementById("admin-label").style.display = "block";
+        }
+
+        function loadOrders() {
+            fetch("/api/office-orders")
+                .then(res => res.json())
+                .then(data => {
+
+                    if (table) {
+                        table.clear().destroy();
+                    }
+
+                    const headerRow = document.getElementById("table-header-row");
+                    if (isAdmin && !document.getElementById("th-action")) {
+                        headerRow.insertAdjacentHTML("beforeend", '<th id="th-action">Action</th>');
+                    }
+
+                    const tbody = document.querySelector("#ordersTable tbody");
+                    tbody.innerHTML = "";
+
+                    data.forEach(o => {
+                        let actionTd = "";
+                        if (isAdmin) {
+                            actionTd = `
+                        <td>
+                            <button class="btn-delete" onclick="deleteOrder(${o.id})">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </td>
+                    `;
+                        }
+
+                        const row = `
+                    <tr id="order-${o.id}">
+                        <td>${o.subject || ""}</td>
+                        <td>${o.category || ""}</td>
+                        <td>${o.subcategory || ""}</td>
+                        <td>${o.release_date || ""}</td>
+                        <td>
+                            <a href="${o.pdf_path}" target="_blank">PDF</a>
+                        </td>
+                        ${actionTd}
+                    </tr>
+                `;
+                        tbody.insertAdjacentHTML("beforeend", row);
+                    });
+
+                    table = $('#ordersTable').DataTable({
+                        responsive: false,  // REMOVE weird hamburger
+                        autoWidth: false,
+                        order: [[3, "desc"]],
+                        dom: '<"row mb-3"<"col-md-6"l><"col-md-6 text-right"f>>rtip'
+                    });
+                });
+        }
+
+        function deleteOrder(id) {
+            if (!confirm("Delete this office order?")) return;
+
+            fetch(`/api/office-orders/${id}`, {
+                method: "DELETE"
             })
-            .catch(err => console.error("Failed to fetch office orders", err));
-    }
+                .then(res => res.json())
+                .then(() => loadOrders())
+                .catch(err => console.error(err));
+        }
 
-    function applyFilters() {
-        renderTable();
-    }
-
-    function deleteOfficeOrder(id) {
-        if (!confirm("Delete this office order?")) return;
-
-        fetch(`/api/office-orders/${id}`, {
-            method: "DELETE"
-        })
-        .then(res => res.json())
-        .then(() => {
-            // Remove instantly from UI
-            document.getElementById(`order-${id}`)?.remove();
-
-            // Also remove from JS array
-            allOrders = allOrders.filter(o => o.id !== id);
-        })
-        .catch(err => console.error("Delete failed:", err));
-    }
-
-    function renderTable() {
-        const tbody = document.getElementById("orders-body");
-        tbody.innerHTML = "";
-
-        const searchText = document.getElementById("searchBox").value.toLowerCase();
-        const selectedCategory = document.getElementById("categoryFilter").value;
-
-        allOrders.forEach(o => {
-            const subjectMatch = (o.subject || "").toLowerCase().includes(searchText);
-            const categoryMatch =
-                selectedCategory === "all" || o.category === selectedCategory;
-
-            if (!subjectMatch || !categoryMatch) return;
-
-            const row = `
-                <tr id="order-${o.id}">
-                    <td>
-                        ${o.subject || ""}
-                        ${o.is_new ? '<span class="new-badge">NEW</span>' : ''}
-                    </td>
-                    <td>${o.category || ""}</td>
-                    <td>${o.subcategory || ""}</td>
-                    <td>${o.release_date || ""}</td>
-                    <td>
-                        <a href="${o.pdf_path}" target="_blank">PDF</a>
-                    </td>
-                    <td>
-                        <button onclick="deleteOfficeOrder(${o.id})">❌</button>
-                    </td>
-                </tr>
-            `;
-
-            tbody.insertAdjacentHTML("beforeend", row);
-        });
-    }
-
-    fetchOrders();
-    setInterval(fetchOrders, 5000);
-</script>
+        // Load
+        loadOrders();
+        setInterval(loadOrders, 8000);
+    </script>
 
 </body>
+
 </html>

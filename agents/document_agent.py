@@ -20,11 +20,8 @@ client = OpenAI(
 SYSTEM_PROMPT = """
 You are an expert university administrative assistant.
 
-You are given CONTEXT extracted from an official academic document using retrieval.
+You are given CONTEXT extracted from an official academic document.
 
-Your job is to extract structured information accurately.
-
-------------------------
 TASKS:
 
 1. Identify document_type:
@@ -33,47 +30,82 @@ TASKS:
 
 2. Extract SUBJECT (VERY IMPORTANT):
    - Must be CLEAN and CONSISTENT
-   - Remove words like: Draft, Version, Final Copy, Circulation
-   - Normalize similar phrases:
+   - Remove words like: Draft, Version, Final Copy
+   - Normalize:
         "Course Schedule" → "Course Timetable"
-   - Keep only core academic meaning
-
-   Example:
-   "Final TT Winter 2026 circulation Draft 5"
-   "Winter Semester 2026 (AY 2025-26) Course Timetable"
 
 3. Extract release_date:
    - Format: YYYY-MM-DD
    - If not found, return ""
 
-4. If document_type = "office_order":
-   - Extract category
-   - Extract subcategory
+4. IF document_type = "office_order":
 
-------------------------
-STRICT RULES:
+CATEGORY (STRICT):
+You MUST choose ONLY ONE from:
+[
+  "Academic",
+  "Faculty Matters",
+  "Finance & Accounts",
+  "HR",
+  "Institute",
+  "IRD",
+  "Stores & Purchase",
+  "Student Affairs"
+]
+
+If unsure → choose "Institute"
+
+SUBCATEGORY:
+- Generate a short meaningful label (2–4 words)
+
+5. IF document_type = "timetable":
+
+Extract the following:
+
+- semester:
+    Must be one of:
+    ["Winter", "Monsoon", "Summer"]
+
+- academic_year:
+    Example formats:
+    "2025-26", "2024-25"
+
+- version_hint:
+    Identify if document is:
+    - "new"
+    - "revised"
+    - "old"
+
+Rules:
+- If words like "revised", "updated", "final" → "revised"
+- If clearly first version → "new"
+- If outdated → "old"
+
+RULES:
 
 - Return ONLY valid JSON
 - No explanation
 - No markdown
 - Do NOT hallucinate
-- If unsure → use ""
 
-------------------------
-OUTPUT FORMAT:
+OUTPUT:
 
 {
   "document_type": "",
   "subject": "",
   "category": "",
   "subcategory": "",
-  "release_date": ""
+  "release_date": "",
+  "semester": "",
+  "academic_year": "",
+  "version_hint": ""
 }
 
-------------------------
+----------------------------------------
 CONTEXT:
 {context}
 """
+
 # MAIN FUNCTION
 
 def analyze_document(pdf_text) -> dict:
@@ -81,16 +113,13 @@ def analyze_document(pdf_text) -> dict:
     Universal document analysis (office order + timetable)
     """
 
-    # Handle OCR or raw text
     if isinstance(pdf_text, dict):
         text_content = pdf_text.get("text", "")
     else:
         text_content = str(pdf_text)
 
-    text_content = text_content.strip()
-    text_content = text_content[:12000]
+    text_content = text_content.strip()[:12000]
 
-    # LLM CALL
     response = client.chat.completions.create(
         model=NVIDIA_MODEL,
         messages=[
@@ -108,8 +137,7 @@ def analyze_document(pdf_text) -> dict:
     except json.JSONDecodeError:
         raise ValueError(f"Invalid JSON from LLM:\n{content}")
 
-
-    # POST-PROCESSING
+    # ---------------- POST-PROCESSING ---------------- #
 
     result.setdefault("document_type", "unknown")
     result.setdefault("subject", "")
@@ -117,13 +145,29 @@ def analyze_document(pdf_text) -> dict:
     result.setdefault("subcategory", "")
     result.setdefault("release_date", "")
 
+    # NEW FIELDS (IMPORTANT)
+    result.setdefault("semester", "")
+    result.setdefault("academic_year", "")
+    result.setdefault("version_hint", "new")
+
     # Clean subject
     if result["subject"]:
         result["subject"] = (
             result["subject"]
             .replace("Re:", "")
             .replace("Fwd:", "")
+            .replace("Draft", "")
+            .replace("Final", "")
             .strip()
         )
 
+    # Normalize semester
+    if result["semester"]:
+        result["semester"] = result["semester"].capitalize()
+
+    # Normalize version
+    if result["version_hint"] not in ["new", "revised", "old"]:
+        result["version_hint"] = "new"
+
     return result
+

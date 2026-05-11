@@ -1,0 +1,50 @@
+[
+    {
+        "id": 1776675347,
+        "subject": "Summer Term 2026 Timetable",
+        "semester": "Summer",
+        "academic_year": "2025-26",
+        "group_key": "summer_2025-26",
+        "version": 1,
+        "version_hint": "new",
+        "date": "2026-04-20",
+        "file": "/static/pdfs/Semester Schedule for Summer Term 2026.pdf",
+        "archived": false
+    },
+    {
+        "id": 1776675850,
+        "subject": "Monsoon Semester 2026 Timetable",
+        "semester": "Monsoon",
+        "academic_year": "2026-27",
+        "group_key": "monsoon_2026-27",
+        "version": 1,
+        "version_hint": "new",
+        "date": "2026-04-20",
+        "file": "/static/pdfs/Academic Calendar_Monsoon Semester 2026 AY 26- 27 V1.pdf",
+        "archived": false
+    },
+    {
+        "id": 1776676267,
+        "subject": "Winter Semester 2027 Timetable",
+        "semester": "Winter",
+        "academic_year": "2026-27",
+        "group_key": "winter_2026-27",
+        "version": 1,
+        "version_hint": "new",
+        "date": "2026-04-20",
+        "file": "/static/pdfs/Academic Calendar_Winter Semester 2027 AY 26-27.pdf",
+        "archived": true
+    },
+    {
+        "id": 1776677232,
+        "subject": "Winter Semester 2027 Timetable",
+        "semester": "Winter",
+        "academic_year": "2026-27",
+        "group_key": "winter_2026-27",
+        "version": 2,
+        "version_hint": "revised",
+        "date": "2026-04-20",
+        "file": "/static/pdfs/Academic Calendar_Winter Semester 2027 AY 26-27.pdf",
+        "archived": false
+    }
+]

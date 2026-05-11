@@ -1,92 +1,383 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
-    <title>Timetable</title>
-    <link rel="stylesheet" href="/static/css/style.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Official Academic Timetables</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Outfit', Arial, sans-serif;
+            color: #333333;
+            min-height: 100vh;
+            position: relative;
+            background-color: transparent;
+        }
+
+        body::before {
+            content: "";
+            position: fixed;
+            top: -5%;
+            left: -5%;
+            width: 110%;
+            height: 110%;
+            background-image: url("{{ url_for('static', filename='images/institute18.jpg') }}");
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            filter: blur(4px);
+            z-index: -2;
+        }
+
+        body::after {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.4) 0%, rgba(224, 242, 254, 0.5) 100%);
+            z-index: -1;
+        }
+
+        .hero {
+            height: 300px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 40px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .hero-title {
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.85), rgba(8, 145, 178, 0.85));
+            color: #ffffff;
+            padding: 20px 50px;
+            font-size: 3.2rem;
+            font-weight: 800;
+            border-radius: 20px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(8px);
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .hero-caption {
+            margin-top: 20px;
+            font-size: 1.2rem;
+            color: #1e293b;
+            font-weight: 500;
+            background: rgba(255, 255, 255, 0.7);
+            padding: 12px 24px;
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+            text-align: center;
+            max-width: 650px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            line-height: 1.5;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px 60px 20px;
+        }
+
+        .semester-section {
+            margin-bottom: 40px;
+        }
+
+        .semester-title {
+            color: #0f172a;
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid #0ea5e9;
+            display: inline-block;
+        }
+
+        .cards-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .timetable-card {
+            background: linear-gradient(135deg, #0d9488, #0369a1);
+            width: 220px;
+            height: 220px;
+            text-decoration: none;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            color: white;
+            text-align: center;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            border-radius: 16px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .timetable-card:hover {
+            transform: translateY(-8px) scale(1.03);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.1);
+            background: linear-gradient(135deg, #14b8a6, #0284c7);
+        }
+
+        .pdf-icon {
+            width: 48px;
+            height: 48px;
+            margin-bottom: 15px;
+        }
+
+        .subject {
+            font-size: 1.1rem;
+            font-weight: 600;
+            line-height: 1.3;
+        }
+
+        .version-badge {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            background: rgba(255, 255, 255, 0.25);
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Archive Dropdown styling */
+        .archive-dropdown {
+            margin-top: 15px;
+            width: 220px;
+            /* match card width */
+        }
+
+        .archive-toggle {
+            background: rgba(255, 255, 255, 0.9);
+            color: #334155;
+            border: 1px solid rgba(203, 213, 225, 0.8);
+            padding: 10px 15px;
+            width: 100%;
+            text-align: left;
+            cursor: pointer;
+            font-family: inherit;
+            font-weight: 600;
+            font-size: 0.95rem;
+            display: flex;
+            justify-content: space-between;
+            border-radius: 8px;
+            transition: all 0.2s;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        .archive-toggle:hover {
+            background: #ffffff;
+            border-color: #94a3b8;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        }
+
+        .archive-content {
+            display: none;
+            border: 1px solid rgba(203, 213, 225, 0.8);
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 8px;
+            margin-top: 5px;
+            overflow: hidden;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .archive-content.open {
+            display: block;
+        }
+
+        .archive-item {
+            display: block;
+            padding: 10px 15px;
+            color: #334155;
+            text-decoration: none;
+            font-size: 0.85rem;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .archive-item:hover {
+            background-color: #f8fafc;
+            color: #0ea5e9;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 50px;
+            color: #1e293b;
+            font-size: 1.4rem;
+            font-weight: 600;
+            background: rgba(255, 255, 255, 0.5);
+            border-radius: 16px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+        }
+    </style>
 </head>
 
 <body>
 
-<h2>Timetable</h2>
+    <!-- Hero Section -->
+    <div class="hero" style="flex-direction: column;">
+        <div class="hero-title">Academic Timetables</div>
+        <div class="hero-caption">Central hub for finding the latest academic schedules</div>
+    </div>
 
-<div class="controls">
-    <input
-        type="text"
-        id="searchBox"
-        placeholder="Search timetable..."
-        onkeyup="applyFilter()"
-    >
-</div>
+    <!-- Main Content Container -->
+    <div class="container" id="container">
+        <div class="empty-state">Loading timetables...</div>
+    </div>
 
-<table>
-    <thead>
-        <tr>
-            <th>Subject</th>
-            <th>Date</th>
-            <th>Download</th>
-        </tr>
-    </thead>
+    <script>
+        function toggleArchive(btn) {
+            const content = btn.nextElementSibling;
+            const icon = btn.querySelector('.toggle-icon');
+            if (content.classList.contains('open')) {
+                content.classList.remove('open');
+                icon.textContent = '▼';
+            } else {
+                content.classList.add('open');
+                icon.textContent = '▲';
+            }
+        }
 
-    <tbody id="timetable-body">
-        {% for t in timetable %}
-        <tr>
-            <td>{{ t.subject }}</td>
-            <td>{{ t.date }}</td>
-            <td>
-                <a href="{{ t.file }}" target="_blank">PDF</a>
-            </td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
+        function loadTimetable() {
+            fetch("/api/timetable")
+                .then(res => res.json())
+                .then(data => {
+                    const container = document.getElementById("container");
 
-<script>
-    let allTimetables = [];
+                    if (!data || data.length === 0) {
+                        container.innerHTML = '<div class="empty-state">No timetables found.</div>';
+                        return;
+                    }
 
-    function fetchTimetables() {
-        fetch("/api/timetable")
-            .then(res => res.json())
-            .then(data => {
-                allTimetables = data;
-                renderTable();
-            })
-            .catch(err => console.error("Failed to fetch timetable", err));
-    }
+                    container.innerHTML = "";
 
-    function applyFilter() {
-        renderTable();
-    }
+                    // Group by Semester + Academic Year (e.g. "Winter 2027")
+                    const sections = {};
 
-    function renderTable() {
-        const tbody = document.getElementById("timetable-body");
-        tbody.innerHTML = "";
+                    data.forEach(t => {
+                        const y = t.academic_year || "Unknown Year";
+                        const s = t.semester || "Unknown Semester";
+                        const groupHeading = `${s} ${y}`; // e.g., "Winter 2026-27"
 
-        const searchText = document.getElementById("searchBox").value.toLowerCase();
+                        const gk = t.group_key || `${s}_${y}`.toLowerCase().replace(" ", "");
 
-        allTimetables.forEach(t => {
-            const subjectMatch = (t.subject || "").toLowerCase().includes(searchText);
+                        t.version = t.version || 1;
 
-            if (!subjectMatch) return;
+                        if (!sections[groupHeading]) sections[groupHeading] = {};
+                        if (!sections[groupHeading][gk]) sections[groupHeading][gk] = [];
 
-            const row = `
-                <tr>
-                    <td>${t.subject || ""}</td>
-                    <td>${t.date || ""}</td>
-                    <td>
-                        <a href="${t.file}" target="_blank">PDF</a>
-                    </td>
-                </tr>
-            `;
+                        sections[groupHeading][gk].push(t);
+                    });
 
-            tbody.insertAdjacentHTML("beforeend", row);
-        });
-    }
+                    // Render sections
+                    Object.keys(sections).forEach(heading => {
+                        let sectionHtml = `
+                            <div class="semester-section">
+                                <h3 class="semester-title">${heading}</h3>
+                                <div class="cards-grid">
+                        `;
 
-    // Initial load + auto refresh
-    fetchTimetables();
-    setInterval(fetchTimetables, 5000);
-</script>
+                        const groups = sections[heading];
+
+                        Object.keys(groups).forEach(gk => {
+                            // Sort by version descending (latest first)
+                            const groupItems = groups[gk].sort((a, b) => b.version - a.version);
+                            const current = groupItems[0];
+                            const archived = groupItems.slice(1);
+
+                            let displaySubject = current.subject || `${heading} Timetable`;
+
+                            sectionHtml += `
+                                <div>
+                                    <a href="${current.file}" target="_blank" class="timetable-card">
+                                        <div class="version-badge">v${current.version}</div>
+                                        
+                                        <!-- SVG PDF Icon -->
+                                        <svg class="pdf-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                            <polyline points="14 2 14 8 20 8"></polyline>
+                                            <line x1="16" y1="13" x2="8" y2="13"></line>
+                                            <line x1="16" y1="17" x2="8" y2="17"></line>
+                                            <polyline points="10 9 9 9 8 9"></polyline>
+                                        </svg>
+                                        
+                                        <div class="subject">${displaySubject}</div>
+                                    </a>
+                            `;
+
+                            // Archived dropdown if older versions exist
+                            if (archived.length > 0) {
+                                sectionHtml += `
+                                    <div class="archive-dropdown">
+                                        <button class="archive-toggle" onclick="toggleArchive(this)">
+                                            <span>Archived (${archived.length})</span>
+                                            <span class="toggle-icon">▼</span>
+                                        </button>
+                                        <div class="archive-content">
+                                `;
+                                archived.forEach(arch => {
+                                    sectionHtml += `
+                                            <a href="${arch.file}" target="_blank" class="archive-item">
+                                                <strong>v${arch.version} ${arch.version_hint ? '(' + arch.version_hint + ')' : ''}</strong><br>
+                                                <span style="color: #94a3b8;">${arch.date || ''}</span>
+                                            </a>
+                                    `;
+                                });
+                                sectionHtml += `
+                                        </div>
+                                    </div>
+                                `;
+                            }
+
+                            sectionHtml += `</div>`; // Close wrapper for card + dropdown
+                        });
+
+                        sectionHtml += `
+                                </div>
+                            </div>
+                        `;
+
+                        container.insertAdjacentHTML("beforeend", sectionHtml);
+                    });
+                })
+                .catch(err => {
+                    console.error("Error loading timetables:", err);
+                    document.getElementById("container").innerHTML = '<div class="empty-state">Error loading data.</div>';
+                });
+        }
+
+        loadTimetable();
+        setInterval(loadTimetable, 15000);
+    </script>
 
 </body>
+
 </html>
